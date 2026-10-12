@@ -56,6 +56,69 @@ dotnet test -p:CollectCoverage=true
 
 The run fails if line or branch coverage is below 100%.
 
+## Test results
+
+### Automated tests
+
+| Measure | Value |
+|---|---|
+| Tests | 317, all passing |
+| Line coverage | 100% |
+| Branch coverage | 100% |
+| Database in tests | Real PostgreSQL 17 in a container, nothing mocked |
+
+### Load test
+
+One run on 2026-10-12, with 32 callers sending requests at the same time: 20,000 accounts created, one deposit into each, then 100,000 transfer requests between random accounts.
+
+- 140,000 requests in 2 minutes 22 seconds.
+- No server errors.
+
+| Stage | Requests | Completed per second | p50 | p95 | p99 |
+|---|---|---|---|---|---|
+| Create accounts | 20,000 | about 4,000 | 6 ms | 10 ms | 18 ms |
+| Deposits | 20,000 | about 285 | 20 ms | 756 ms | 2.16 s |
+| Transfers | 100,000 | about 1,500 | 19 ms | 42 ms | 48 ms |
+
+p50, p95 and p99 are the times that 50%, 95% and 99% of requests were faster than. Deposits are slower because all deposits in one currency queue on that currency's world account (see "Known trade-off" below).
+
+### Chaos test
+
+One run of 357,416 requests in eight phases, on the same day.
+
+| Phase | What happened | Result |
+|---|---|---|
+| Calm | 16 callers sending transfers | 1,313 transfers per second, p99 25 ms, no errors |
+| Bad requests | Ten kinds of client mistake, 57,540 requests | Every one refused with the right 4xx status |
+| Database outage | PostgreSQL stopped for 26 seconds | 446 requests answered 503; the API recovered without a restart |
+| Overload | 800 callers at once | 56,586 transfers in 41 seconds, no errors, p50 565 ms |
+
+- No request in the whole run was answered with a 500. Every server-side failure was a 503, which tells the caller to retry with the same idempotency key.
+- The hot-account phase (150 callers on the same two accounts) found a real fault: the API used up every PostgreSQL connection, and 6,805 requests were answered 503. The fix is the connection cap described in the design notes. The same test after the fix completed 7,744 transfers with no errors.
+
+### Ledger correctness after both runs
+
+Checked with SQL directly against the database after 497,416 requests.
+
+| Check | Result |
+|---|---|
+| Transfers stored | 355,748 |
+| Entries stored | 711,496 (exactly 2 per transfer) |
+| Transfers whose entries do not sum to zero | 0 |
+| Accounts whose balance differs from the sum of their entries | 0 |
+| Customer accounts with a negative balance | 0 |
+| Idempotency keys stored more than once | 0 |
+| Total of all balances in USD, EUR and GBP | 0 in each currency |
+
+### How far to trust these numbers
+
+- Everything ran on one Windows 11 machine: the load generator, the API, PostgreSQL and the monitoring stack shared its CPU. The throughput describes that machine, not the application's limit.
+- Each test ran once, so the variation between runs is not known.
+- The load generator was a throwaway program and is not in this repository. Repeatable load tests are planned.
+- The load and chaos runs were made before the connection cap was added.
+
+The full report, including the phases that were inconclusive, is in `visual-review/load-and-chaos-test-report.md`.
+
 ## Build the Docker image
 
 ```powershell
