@@ -1,0 +1,26 @@
+@UmutLedger_HostAddress = http://localhost:5289
+
+### Create an account
+POST {{UmutLedger_HostAddress}}/accounts
+Content-Type: application/json
+
+{ "name": "Alice", "currency": "USD" }
+
+### Deposit 100.00 USD (replace the account id)
+POST {{UmutLedger_HostAddress}}/accounts/00000000-0000-0000-0000-000000000000/deposits
+Content-Type: application/json
+Idempotency-Key: deposit-0001
+
+{ "amount": 10000, "currency": "USD" }
+
+### Transfer 25.00 USD between two accounts (replace the account ids)
+POST {{UmutLedger_HostAddress}}/transfers
+Content-Type: application/json
+Idempotency-Key: transfer-0001
+
+{
+  "debitAccountId": "00000000-0000-0000-0000-000000000000",
+  "creditAccountId": "00000000-0000-0000-0000-000000000000",
+  "amount": 2500,
+  "currency": "USD"
+}

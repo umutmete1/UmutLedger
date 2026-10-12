@@ -1,0 +1,16 @@
+# Keep the build context small and keep local output out of the image
+**/bin/
+**/obj/
+**/*.user
+**/coverage*.json
+.git/
+.vs/
+.superpowers/
+docs/
+visual-review/
+observability/
+tests/
+docker-compose.yml
+Dockerfile
+.dockerignore
+*.md

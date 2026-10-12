@@ -1,0 +1,10 @@
+# Let git detect text files and store them with LF line endings
+* text=auto
+
+# Windows scripts keep CRLF in the working folder
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Shell scripts must stay LF so they run inside Linux containers
+*.sh text eol=lf

@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/UmutLedger/UmutLedger.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/UmutLedger.Tests/UmutLedger.Tests.csproj" />
+  </Folder>
+</Solution>

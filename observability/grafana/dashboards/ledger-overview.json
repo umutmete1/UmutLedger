@@ -1,0 +1,174 @@
+{
+  "uid": "ledger-overview",
+  "title": "Ledger overview",
+  "tags": ["umutledger"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    { "id": 1, "type": "row", "title": "Traffic", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "panels": [] },
+    {
+      "id": 2, "type": "timeseries", "title": "Requests per second by route",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (http_request_method, http_route) (rate(http_server_request_duration_seconds_count{job=\"umutledger\"}[$__rate_interval]))", "legendFormat": "{{http_request_method}} {{http_route}}" }
+      ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Error rate",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"umutledger\", http_response_status_code=~\"4..\"}[$__rate_interval]))", "legendFormat": "4xx" },
+        { "refId": "B", "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"umutledger\", http_response_status_code=~\"5..\"}[$__rate_interval]))", "legendFormat": "5xx" }
+      ]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Request latency by route",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{job=\"umutledger\"}[$__rate_interval])))", "legendFormat": "p50 {{http_route}}" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{job=\"umutledger\"}[$__rate_interval])))", "legendFormat": "p95 {{http_route}}" },
+        { "refId": "C", "expr": "histogram_quantile(0.99, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{job=\"umutledger\"}[$__rate_interval])))", "legendFormat": "p99 {{http_route}}" }
+      ]
+    },
+    { "id": 5, "type": "row", "title": "Money movements", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }, "panels": [] },
+    {
+      "id": 6, "type": "timeseries", "title": "Movements per second by kind and outcome",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 10 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (kind, outcome) (rate(ledger_movements_total[$__rate_interval]))", "legendFormat": "{{kind}} {{outcome}}" }
+      ]
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Share of movements that were replays",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 10 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(ledger_movements_total{outcome=\"replayed\"}[$__rate_interval])) / sum(rate(ledger_movements_total[$__rate_interval]))", "legendFormat": "replayed" }
+      ]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Rejections per second by error code",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 10 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (outcome) (rate(ledger_movements_total{outcome!~\"created|replayed|cancelled|error\"}[$__rate_interval]))", "legendFormat": "{{outcome}}" }
+      ]
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "Money moved per second (minor units)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 10 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (currency, kind) (rate(ledger_movements_amount_total[$__rate_interval]))", "legendFormat": "{{currency}} {{kind}}" }
+      ]
+    },
+    { "id": 10, "type": "row", "title": "Locking", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 }, "panels": [] },
+    {
+      "id": 11, "type": "timeseries", "title": "Account lock wait by kind and currency",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 19 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le, kind, currency) (rate(ledger_account_lock_wait_duration_seconds_bucket[$__rate_interval])))", "legendFormat": "p50 {{kind}} {{currency}}" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le, kind, currency) (rate(ledger_account_lock_wait_duration_seconds_bucket[$__rate_interval])))", "legendFormat": "p95 {{kind}} {{currency}}" },
+        { "refId": "C", "expr": "histogram_quantile(0.99, sum by (le, kind, currency) (rate(ledger_account_lock_wait_duration_seconds_bucket[$__rate_interval])))", "legendFormat": "p99 {{kind}} {{currency}}" }
+      ]
+    },
+    { "id": 12, "type": "row", "title": "Database and runtime", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 }, "panels": [] },
+    {
+      "id": 13, "type": "timeseries", "title": "PostgreSQL connections in use",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 28 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(db_client_connection_count{job=\"umutledger\", db_client_connection_state=\"used\"})", "legendFormat": "in use" }
+      ]
+    },
+    {
+      "id": 14, "type": "timeseries", "title": "SQL command duration p95",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 28 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(db_client_operation_duration_seconds_bucket{job=\"umutledger\"}[$__rate_interval])))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "id": 15, "type": "timeseries", "title": "Heap size after the last collection",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 28 },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(dotnet_gc_last_collection_heap_size_bytes{job=\"umutledger\"})", "legendFormat": "heap" }
+      ]
+    },
+    {
+      "id": 16, "type": "timeseries", "title": "Garbage collections per second",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 28 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (gc_heap_generation) (rate(dotnet_gc_collections_total{job=\"umutledger\"}[$__rate_interval]))", "legendFormat": "{{gc_heap_generation}}" }
+      ]
+    },
+    { "id": 17, "type": "row", "title": "Logs", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 }, "panels": [] },
+    {
+      "id": 19, "type": "timeseries", "title": "Movement log lines per second by outcome",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 37 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (Outcome) (rate({service_name=\"umutledger\"} | Outcome != \"\" [$__auto]))", "legendFormat": "{{Outcome}}" }
+      ]
+    },
+    {
+      "id": 20, "type": "timeseries", "title": "Movement log lines per second by kind",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 37 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (Kind) (rate({service_name=\"umutledger\"} | Outcome != \"\" [$__auto]))", "legendFormat": "{{Kind}}" }
+      ]
+    },
+    {
+      "id": 21, "type": "timeseries", "title": "All log lines per second by level",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 37 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (detected_level) (rate({service_name=\"umutledger\"}[$__auto]))", "legendFormat": "{{detected_level}}" }
+      ]
+    },
+    {
+      "id": 22, "type": "logs", "title": "Latest money movements",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 45 },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [
+        { "refId": "A", "expr": "{service_name=\"umutledger\"} | Outcome != \"\"", "maxLines": 200 }
+      ]
+    },
+    {
+      "id": 18, "type": "logs", "title": "Latest warnings and errors",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 55 },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [
+        { "refId": "A", "expr": "{service_name=\"umutledger\"} | detected_level=~\"warn|error|fatal\"" }
+      ]
+    }
+  ]
+}
